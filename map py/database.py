@@ -1,30 +1,34 @@
 import sqlite3
 
-DATABASE = 'school.db'
+from tkcalendar.calendar_ import re
+
+DATABASE = "school.db"
+
 
 def create_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def initialize_database():
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS teachers (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL
             )
-        ''')
-        cursor.execute('''
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS subjects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 subject_name TEXT NOT NULL,
                 teacher_id TEXT NOT NULL,
                 FOREIGN KEY (teacher_id) REFERENCES teachers (id)
             )
-        ''')
-        cursor.execute('''
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS schedule (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 room TEXT NOT NULL,
@@ -40,81 +44,126 @@ def initialize_database():
                 teacher_id TEXT NOT NULL,
                 FOREIGN KEY (teacher_id) REFERENCES teachers (id)
             )
-        ''')
-        cursor.execute('''
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS rooms (
                 name TEXT PRIMARY KEY,
                 coordinates TEXT NOT NULL
             )
-        ''')
+        """)
         conn.commit()
     insert_rooms()  # Call insert_rooms to populate the rooms table
+
 
 def create_table():
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS example_table (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL
             )
-        ''')
+        """)
         conn.commit()
+
 
 def insert_teacher(id, name):
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('INSERT OR REPLACE INTO teachers (id, name) VALUES (?, ?)', (id, name))
+        cursor.execute(
+            "INSERT OR REPLACE INTO teachers (id, name) VALUES (?, ?)", (id, name)
+        )
         conn.commit()
+
 
 def insert_teacher_id(id):
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('INSERT OR IGNORE INTO teachers (id, name) VALUES (?, "")', (id,))
+        cursor.execute(
+            'INSERT OR IGNORE INTO teachers (id, name) VALUES (?, "")', (id,)
+        )
         conn.commit()
+
 
 def get_teacher_ids():
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT id FROM teachers')
+        cursor.execute("SELECT id FROM teachers")
         ids = [row[0] for row in cursor.fetchall()]
     return ids
+
 
 def get_teacher_name(teacher_id):
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT name FROM teachers WHERE id = ?', (teacher_id,))
+        cursor.execute("SELECT name FROM teachers WHERE id = ?", (teacher_id,))
         row = cursor.fetchone()
         if row:
-            return row['name']
+            return row["name"]
         return None
+
 
 def get_subjects(teacher_id):
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT subject_name FROM subjects WHERE teacher_id = ?", (teacher_id,))
-        subjects = [row['subject_name'] for row in cursor.fetchall()]
+        cursor.execute(
+            "SELECT subject_name FROM subjects WHERE teacher_id = ?", (teacher_id,)
+        )
+        subjects = [row["subject_name"] for row in cursor.fetchall()]
     return subjects
 
-def insert_schedule(room, date, subject, start_hour, start_minute, start_period, end_hour, end_minute, end_period, class_name, teacher_id):
+
+def insert_schedule(
+    room,
+    date,
+    subject,
+    start_hour,
+    start_minute,
+    start_period,
+    end_hour,
+    end_minute,
+    end_period,
+    class_name,
+    teacher_id,
+):
     try:
         with create_connection() as conn:
             cursor = conn.cursor()
-            
+
             # Check if the teacher_id exists in the teachers table
             cursor.execute("SELECT id FROM teachers WHERE id = ?", (teacher_id,))
             if cursor.fetchone() is None:
-                raise ValueError(f"Teacher ID {teacher_id} does not exist in the teachers table.")
-            
-            cursor.execute("""
+                raise ValueError(
+                    f"Teacher ID {teacher_id} does not exist in the teachers table."
+                )
+
+            cursor.execute(
+                """
                 INSERT INTO schedule (room, date, subject, start_hour, start_minute, start_period, end_hour, end_minute, end_period, class_name, teacher_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (room, date, subject, start_hour, start_minute, start_period, end_hour, end_minute, end_period, class_name, teacher_id))
+            """,
+                (
+                    room,
+                    date,
+                    subject,
+                    start_hour,
+                    start_minute,
+                    start_period,
+                    end_hour,
+                    end_minute,
+                    end_period,
+                    class_name,
+                    teacher_id,
+                ),
+            )
             conn.commit()
-            print(f"Schedule inserted successfully: {room}, {date}, {subject}, {start_hour}, {start_minute}, {start_period}, {end_hour}, {end_minute}, {end_period}, {class_name}, {teacher_id}")  # Debugging
+            print(
+                f"Schedule inserted successfully: {room}, {date}, {subject}, {start_hour}, {start_minute}, {start_period}, {end_hour}, {end_minute}, {end_period}, {class_name}, {teacher_id}"
+            )  # Debugging
     except Exception as e:
         print(f"Error inserting schedule: {str(e)}")
         raise
+
 
 def insert_rooms():
     rooms = {
@@ -128,31 +177,36 @@ def insert_rooms():
         "L4": (450, 430, 530, 530),
         "CL-D": (530, 430, 710, 530),
         "L1": (60, 180, 140, 260),
-        "L2": (60, 260, 140, 340)
+        "L2": (60, 260, 140, 340),
     }
-    
+
     with create_connection() as conn:
         cursor = conn.cursor()
         for name, coordinates in rooms.items():
-            cursor.execute('INSERT OR REPLACE INTO rooms (name, coordinates) VALUES (?, ?)', (name, str(coordinates)))
+            cursor.execute(
+                "INSERT OR REPLACE INTO rooms (name, coordinates) VALUES (?, ?)",
+                (name, str(coordinates)),
+            )
         conn.commit()
+
 
 def get_rooms():
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT name FROM rooms')
+        cursor.execute("SELECT name FROM rooms")
         rooms = [row[0] for row in cursor.fetchall()]
     return rooms
+
 
 def get_schedule():
     try:
         with create_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute("""
                 SELECT s.id, s.room, s.date, s.subject, s.start_hour, s.start_minute, s.start_period, s.end_hour, s.end_minute, s.end_period, s.class_name, s.teacher_id, t.name as teacher_name
                 FROM schedule s
                 JOIN teachers t ON s.teacher_id = t.id
-            ''')
+            """)
             schedule = cursor.fetchall()
             schedule_list = [dict(row) for row in schedule]
     except Exception as e:
@@ -160,16 +214,20 @@ def get_schedule():
         schedule_list = []
     return schedule_list
 
+
 def get_schedule_by_id(schedule_id):
     try:
         with create_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT s.id, s.room, s.date, s.subject, s.start_hour, s.start_minute, s.start_period, s.end_hour, s.end_minute, s.end_period, s.class_name, s.teacher_id, t.name as teacher_name
                 FROM schedule s
                 JOIN teachers t ON s.teacher_id = t.id
                 WHERE s.id = ?
-            ''', (schedule_id,))
+            """,
+                (schedule_id,),
+            )
             row = cursor.fetchone()
             if row:
                 return dict(row)
@@ -178,21 +236,42 @@ def get_schedule_by_id(schedule_id):
         print(f"An error occurred: {e}")
         return None
 
-def update_schedule(room, date, start_hour, start_minute, start_period, updated_values):
+
+def update_schedule(updated_values):
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("""
+
+        set_clause = ",\n".join(
+            [
+                f"{k} = '{v}'"
+                for k, v in updated_values.items()
+                if k != "teacher_name" and k != "id"
+            ]
+        )
+
+        query = f"""
             UPDATE schedule
-            SET room = ?, date = ?, subject = ?, start_hour = ?, start_minute = ?, start_period = ?, end_hour = ?, end_minute = ?, end_period = ?, class_name = ?, teacher_id = ?
-            WHERE room = ? AND date = ? AND start_hour = ? AND start_minute = ? AND start_period = ?
-        """, (*updated_values, room, date, start_hour, start_minute, start_period))
+            SET {set_clause}
+            WHERE id = {updated_values["id"]};
+        """
+
+        print(query)
+
+        cursor.execute(query)
+
         conn.commit()
+
 
 def delete_schedule(room, date, start_hour, start_minute, start_period):
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM schedule WHERE room = ? AND date = ? AND start_hour = ? AND start_minute = ? AND start_period = ?", (room, date, start_hour, start_minute, start_period))
+        cursor.execute(
+            "DELETE FROM schedule WHERE room = ? AND date = ? AND start_hour = ? AND start_minute = ? AND start_period = ?",
+            (room, date, start_hour, start_minute, start_period),
+        )
         conn.commit()
+
 
 # Initialize the database (create tables if they do not exist)
 initialize_database()
+
