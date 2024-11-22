@@ -1,7 +1,6 @@
-import pdb
 import tkinter as tk
 from tkinter import simpledialog, ttk, messagebox
-from tkcalendar import DateEntry
+from tkcalendar import DateEntry, dateentry
 import os
 import sys
 from database import (
@@ -148,7 +147,7 @@ class ScheduleViewerApp:
                 )
 
     def update_modified_schedule(self, item_id, updated_values):
-        pass
+        raise NotImplementedError()
 
     def save_schedule(self):
         # TODO: update the db itself
@@ -159,27 +158,31 @@ class ScheduleViewerApp:
             )
 
     def remove_row(self):
-        pass
+        raise NotImplementedError()
 
     def undo_action(self):
-        pass
+        raise NotImplementedError()
 
     def redo_action(self):
-        pass
+        raise NotImplementedError()
 
     def reset_schedule(self):
-        pass
+        raise NotImplementedError()
 
     def go_back(self):
-        pass
+        raise NotImplementedError()
 
     def switch_teacher(self, selected_teacher_name):
-        pass
+        raise NotImplementedError()
 
     def get_key(self, key: str) -> str:
         key = key.lower()
 
+        print(key)
+
         # TODO: add other cases
+        if key == "teacher":
+            return "teacher_id"
 
         return key
 
@@ -195,15 +198,20 @@ class ScheduleViewerApp:
         print("row:", item_index, "column", column_index)
         key = self.get_key(column_name)
 
+        # TODO: add guard where the teacher can only edit his own schedule
+
         match column_name:
             case "Room":
                 new_value = self.get_room_dropdown(item[key])
+            case "Date":
+                new_value = self.get_date(item[key])
+
 
         item[key] = new_value
 
         # WARN: Update shit
         self.modified_schedule[item_index] = item
-        self.undo_stack.append((item_index, key, new_value))
+        self.undo_stack.append(("edit", item_index, key, new_value))
         self.load_schedule(self.modified_schedule)
         print("Item added to undo stack: ", self.undo_stack)
 
@@ -235,13 +243,18 @@ class ScheduleViewerApp:
         date_entry.pack(pady=20)
 
         def save_date():
+            global out_date
+            out_date = date_entry.get_date().strftime("%m/%d/%y")
             date_dialog.destroy()
+
 
         save_button = tk.Button(date_dialog, text="Save", command=save_date)
         save_button.pack(pady=10)
 
+        print("run")
         date_dialog.wait_window()
-        return date_entry.get_date().strftime("%Y-%m-%d")
+
+        return out_date
 
     def get_room_dropdown(self, current_value):
         room_dialog = tk.Toplevel(self.root)
