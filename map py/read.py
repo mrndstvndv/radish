@@ -6,6 +6,7 @@ import sys
 from database import (
     get_schedule,
     delete_schedule,
+    initialize_database,
     update_schedule,
     insert_schedule,
     get_teacher_ids,
@@ -20,7 +21,7 @@ class ScheduleEvent:
     def __init__(self, event: str, index: int = None, key=None, value=None) -> None:
         self.event = event
         self.index = index
-        self.key = value
+        self.key = key
         self.value = value
 
 
@@ -185,10 +186,55 @@ class ScheduleViewerApp:
             self.tree.delete(selected_item)
 
     def undo_action(self):
-        raise NotImplementedError()
+        if not self.undo_stack:
+            return
+
+        self.redo_stack.append(self.undo_stack.pop())
+
+        if len(self.undo_stack) == 0:
+            self.modified_schedule = self.initial_schedule
+            self.load_schedule(self.modified_schedule)
+            return
+
+        event = self.undo_stack[-1]
+
+        item = self.modified_schedule[event.index]
+        match event.event:
+            case "edit":
+                item[event.key] = event.value
+
+        self.load_schedule(self.modified_schedule)
 
     def redo_action(self):
-        raise NotImplementedError()
+        if not self.redo_stack:
+            return
+
+        event = self.redo_stack.pop()
+        self.undo_stack.append(event)
+
+        match event.event:
+            case "edit":
+                # Reapply the edit
+                item = self.modified_schedule[event.index].copy()
+                match self.tree.heading(f"#{event.index + 1}")["text"]:
+                    case "Start Time":
+                        prev_time = self.parse_time(event.value)
+                        item["start_hour"] = prev_time[0]
+                        item["start_minute"] = prev_time[1]
+                        item["start_period"] = prev_time[2]
+                    case "End Time":
+                        prev_time = self.parse_time(event.value)
+                        item["end_hour"] = prev_time[0]
+                        item["end_minute"] = prev_time[1]
+                        item["end_period"] = prev_time[2]
+                    case _:
+                        item[event.key] = event.value
+                self.modified_schedule[event.index] = item
+            case "delete":
+                # Remove the item again
+                self.modified_schedule.remove(event.value)
+
+        self.load_schedule(self.modified_schedule)
 
     def reset_schedule(self):
         raise NotImplementedError()
@@ -266,7 +312,6 @@ class ScheduleViewerApp:
                 item["end_minute"] = new_value[1]
                 item["end_period"] = new_value[2]
             case _:
-                print(item[key])
                 new_value = self.get_new_value(column_name, item[key])
                 item[key] = new_value
 
