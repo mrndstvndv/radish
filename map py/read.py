@@ -192,7 +192,7 @@ class ScheduleViewerApp:
         self.redo_stack.append(self.undo_stack.pop())
 
         if len(self.undo_stack) == 0:
-            self.modified_schedule = self.initial_schedule
+            self.modified_schedule = get_schedule().copy()
             self.load_schedule(self.modified_schedule)
             return
 
@@ -209,30 +209,15 @@ class ScheduleViewerApp:
         if not self.redo_stack:
             return
 
+        print(self.initial_schedule)
+
         event = self.redo_stack.pop()
         self.undo_stack.append(event)
 
+        item = self.modified_schedule[event.index]
         match event.event:
             case "edit":
-                # Reapply the edit
-                item = self.modified_schedule[event.index].copy()
-                match self.tree.heading(f"#{event.index + 1}")["text"]:
-                    case "Start Time":
-                        prev_time = self.parse_time(event.value)
-                        item["start_hour"] = prev_time[0]
-                        item["start_minute"] = prev_time[1]
-                        item["start_period"] = prev_time[2]
-                    case "End Time":
-                        prev_time = self.parse_time(event.value)
-                        item["end_hour"] = prev_time[0]
-                        item["end_minute"] = prev_time[1]
-                        item["end_period"] = prev_time[2]
-                    case _:
-                        item[event.key] = event.value
-                self.modified_schedule[event.index] = item
-            case "delete":
-                # Remove the item again
-                self.modified_schedule.remove(event.value)
+                item[event.key] = event.value
 
         self.load_schedule(self.modified_schedule)
 
