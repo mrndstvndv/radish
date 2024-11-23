@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import simpledialog, ttk, messagebox
-from tkcalendar import DateEntry, dateentry
+from tkcalendar import DateEntry 
 import os
 import sys
 from database import (
@@ -181,10 +181,28 @@ class ScheduleViewerApp:
         print(key)
 
         # TODO: add other cases
-        if key == "teacher":
-            return "teacher_id"
+        match key:
+            case "teacher":
+                return "teacher_id"
+            case "class name":
+                return "class_name"
+            case _:
+                return key
 
-        return key
+    def parse_time(self, time: str):
+        hour, minute, period = (
+            time.split(":")[0],
+            time.split(":")[1].split(" ")[0],
+            time.split(" ")[1],
+        )
+        return (hour, minute, period)
+
+    def item_time_tostr(self, prefix: str, item) -> str:
+        hour = f"{prefix}_hour"
+        minute = f"{prefix}_minute"
+        period = f"{prefix}_period"
+
+        return f"{item[hour]}:{item[minute]} {item[period]}"
 
     def on_double_click(self, event):
         item_id = self.tree.selection()[0]
@@ -203,11 +221,28 @@ class ScheduleViewerApp:
         match column_name:
             case "Room":
                 new_value = self.get_room_dropdown(item[key])
+                item[key] = new_value
             case "Date":
                 new_value = self.get_date(item[key])
-
-
-        item[key] = new_value
+                item[key] = new_value
+            case "Start Time":
+                new_value = self.parse_time(
+                    self.get_new_value(column_name, self.item_time_tostr("start", item))
+                )
+                item["start_hour"] = new_value[0]
+                item["start_minute"] = new_value[1]
+                item["start_period"] = new_value[2]
+            case "End Time":
+                new_value = self.parse_time(
+                    self.get_new_value(column_name, self.item_time_tostr("end", item))
+                )
+                item["end_hour"] = new_value[0]
+                item["end_minute"] = new_value[1]
+                item["end_period"] = new_value[2]
+            case _:
+                print(item[key])
+                new_value = self.get_new_value(column_name, item[key])
+                item[key] = new_value
 
         # WARN: Update shit
         self.modified_schedule[item_index] = item
@@ -215,15 +250,12 @@ class ScheduleViewerApp:
         self.load_schedule(self.modified_schedule)
         print("Item added to undo stack: ", self.undo_stack)
 
-    def get_new_value(self, column_index, current_value):
-        if self.tree["columns"][column_index] == "Date":
-            return self.get_date(current_value)
-        else:
-            return simpledialog.askstring(
-                "Input",
-                f"Enter new value for {self.tree['columns'][column_index]}:",
-                initialvalue=current_value,
-            )
+    def get_new_value(self, name: str, current_value: str):
+        return simpledialog.askstring(
+            "Input",
+            f"Enter new value for {name}:",
+            initialvalue=current_value,
+        )
 
     def get_date(self, initial_value):
         date_dialog = tk.Toplevel(self.root)
@@ -246,7 +278,6 @@ class ScheduleViewerApp:
             global out_date
             out_date = date_entry.get_date().strftime("%m/%d/%y")
             date_dialog.destroy()
-
 
         save_button = tk.Button(date_dialog, text="Save", command=save_date)
         save_button.pack(pady=10)
