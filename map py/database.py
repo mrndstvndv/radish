@@ -262,16 +262,12 @@ def update_schedule(updated_values):
         conn.commit()
 
 
-def delete_schedule(room, date, start_hour, start_minute, start_period):
+def delete_schedule(id: str):
     with create_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            "DELETE FROM schedule WHERE room = ? AND date = ? AND start_hour = ? AND start_minute = ? AND start_period = ?",
-            (room, date, start_hour, start_minute, start_period),
-        )
+        cursor.execute("DELETE FROM schedule WHERE id = ?", (id,))
         conn.commit()
 
 
 # Initialize the database (create tables if they do not exist)
 initialize_database()
-

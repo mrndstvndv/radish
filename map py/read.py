@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import simpledialog, ttk, messagebox
-from tkcalendar import DateEntry 
+from tkcalendar import DateEntry
 import os
 import sys
 from database import (
@@ -16,13 +16,21 @@ from data import all_schedules
 from datetime import date, datetime
 
 
+class ScheduleEvent:
+    def __init__(self, event: str, index: int = None, key=None, value=None) -> None:
+        self.event = event
+        self.index = index
+        self.key = value
+        self.value = value
+
+
 class ScheduleViewerApp:
     def __init__(self, root, teacher_id):
         self.root = root
         self.teacher_id = teacher_id
         self.root.title("Schedule Viewer")
         self.tree = self.create_tree()
-        self.undo_stack = []
+        self.undo_stack: list[ScheduleEvent] = []
         self.redo_stack = []
         self.initial_schedule = (
             None  # Variable to store the initial state of the schedule
@@ -150,15 +158,31 @@ class ScheduleViewerApp:
         raise NotImplementedError()
 
     def save_schedule(self):
-        # TODO: update the db itself
-        for item in self.modified_schedule:
-            # TODO: we can check the stack for modifications so we do not waste resources
-            update_schedule(
-                item,
-            )
+        for i in self.undo_stack:
+            match i.event:
+                case "edit":
+                    update_schedule(self.modified_schedule[i.index])
+                case "delete":
+                    print(f"Deleting item {i.value["id"]}")
+                    delete_schedule(str(i.value["id"]))
 
     def remove_row(self):
-        raise NotImplementedError()
+        selected_item = self.tree.selection()
+        item_index = self.get_selected_item_index()
+        if selected_item:
+            item = self.tree.item(selected_item)
+            values = item["values"]
+            print("teacher_id: " + values[6])
+            print("id: ", end="")
+            print(self.modified_schedule[item_index]["id"])
+            if values[6] != get_teacher_name(self.teacher_id):
+                messagebox.showerror("Error", "You can only remove your own schedule.")
+                return
+            self.undo_stack.append(
+                ScheduleEvent(event="delete", value=self.modified_schedule[item_index])
+            )
+            # self.redo_stack.clear()  # Clear the redo stack on new action
+            self.tree.delete(selected_item)
 
     def undo_action(self):
         raise NotImplementedError()
@@ -180,7 +204,6 @@ class ScheduleViewerApp:
 
         print(key)
 
-        # TODO: add other cases
         match key:
             case "teacher":
                 return "teacher_id"
@@ -204,9 +227,12 @@ class ScheduleViewerApp:
 
         return f"{item[hour]}:{item[minute]} {item[period]}"
 
-    def on_double_click(self, event):
+    def get_selected_item_index(self):
         item_id = self.tree.selection()[0]
-        item_index = self.tree.index(item_id)
+        return self.tree.index(item_id)
+
+    def on_double_click(self, event):
+        item_index = self.get_selected_item_index()
         item = self.modified_schedule[item_index].copy()
 
         column = self.tree.identify_column(event.x)
@@ -246,7 +272,9 @@ class ScheduleViewerApp:
 
         # WARN: Update shit
         self.modified_schedule[item_index] = item
-        self.undo_stack.append(("edit", item_index, key, new_value))
+        self.undo_stack.append(
+            ScheduleEvent(event="edit", index=item_index, key=key, value=new_value)
+        )
         self.load_schedule(self.modified_schedule)
         print("Item added to undo stack: ", self.undo_stack)
 
