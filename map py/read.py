@@ -222,7 +222,8 @@ class ScheduleViewerApp:
         self.load_schedule(self.modified_schedule)
 
     def reset_schedule(self):
-        raise NotImplementedError()
+        # did a reset
+        self.modified_schedule = get_schedule().copy()
 
     def go_back(self):
         raise NotImplementedError()
